@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hardware Inspector Team Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: datasheet-style single column with a sticky contents rail; a sticky toolbar picks "who am I", and the four roles can be handed to any team member. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #19202b;
+  --muted: #586273;
+  --line: #d9dee6;
+  --accent: #1d57b8;
+  --accent-soft: #e5edfa;
+  --warn: #a35a00;
+  --warn-soft: #fbf0e0;
+  --ok: #1f7a4a;
+  --ok-soft: #e3f3ea;
+  --code-bg: #eef1f5;
+  --r-cpu: #1d57b8;
+  --r-pci: #8a3fb0;
+  --r-out: #1f7a4a;
+  --r-cache: #b5531c;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151c; --surface: #181e27; --fg: #e4e8ef; --muted: #9aa5b6; --line: #2b3442;
+    --accent: #7fa8f0; --accent-soft: #1c2a42; --warn: #f0b060; --warn-soft: #33281a;
+    --ok: #6fcf98; --ok-soft: #173023; --code-bg: #1f2631;
+    --r-cpu: #7fa8f0; --r-pci: #c99be3; --r-out: #6fcf98; --r-cache: #f0a070; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #181e27; --fg: #e4e8ef; --muted: #9aa5b6; --line: #2b3442;
+  --accent: #7fa8f0; --accent-soft: #1c2a42; --warn: #f0b060; --warn-soft: #33281a;
+  --ok: #6fcf98; --ok-soft: #173023; --code-bg: #1f2631;
+  --r-cpu: #7fa8f0; --r-pci: #c99be3; --r-out: #6fcf98; --r-cache: #f0a070; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 80px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg);
+  font-family: var(--body); font-size: 17px; line-height: 1.6;
+}
+
+/* ---------- toolbar ---------- */
+.toolbar { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.toolbar-in { max-width: 1120px; margin: 0 auto; padding-block: 10px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.toolbar .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.who { display: flex; flex-wrap: wrap; gap: 6px; }
+.who button, .btn { font: 600 14px var(--body); border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); padding: 4px 12px; border-radius: 20px; cursor: pointer; }
+.who button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--surface); }
+.btn:hover, .who button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.myrole { font-size: 14px; color: var(--muted); }
+.countdown { margin-left: auto; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.countdown b { color: var(--warn); }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 80px; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+nav.toc { position: sticky; top: 80px; align-self: start; font-size: 14px; }
+nav.toc p { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover, nav.toc a.on { color: var(--accent); }
+main { min-width: 0; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; } nav.toc { display: none; } .countdown { margin-left: 0; } }
+
+header.top { border-bottom: 2px solid var(--fg); padding-bottom: 20px; margin-bottom: 8px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5vw, 46px); line-height: 1.05; margin: 0 0 12px; text-wrap: balance; letter-spacing: -.01em; }
+.lede { font-size: 19px; color: var(--muted); max-width: 64ch; margin: 0; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 56px 0 12px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline; }
+h2 .sec { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 19px; margin: 28px 0 8px; }
+p, li { max-width: 72ch; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+pre { font-family: var(--mono); font-size: 13.5px; line-height: 1.5; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; overflow-x: auto; margin: 12px 0 18px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.tbl { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); white-space: nowrap; }
+
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin: 24px 0 0; }
+.facts div { background: var(--surface); padding: 14px 16px; }
+.facts dt { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 4px 0 0; font-family: var(--display); font-weight: 700; font-size: 20px; }
+.facts dd small { display: block; font-family: var(--body); font-weight: 400; font-size: 14px; color: var(--muted); }
+@media (max-width: 700px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.marks { display: grid; gap: 6px; margin: 16px 0; }
+.mrow { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr) 44px; gap: 12px; align-items: center; font-size: 15px; }
+.bar { height: 14px; background: var(--code-bg); border-radius: 2px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.bar.hot span { background: var(--warn); }
+.mrow .v { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 560px) { .mrow { grid-template-columns: minmax(0, 1fr) 44px; } .mrow .bar { grid-column: 1 / -1; grid-row: 2; } }
+
+.note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 16px 0; max-width: 76ch; }
+.note.warn { border-color: var(--warn); background: var(--warn-soft); }
+.note p { margin: 0; }
+.note p + p { margin-top: 8px; }
+
+/* ---------- role colours and names ---------- */
+[data-c="cpu"] { --c: var(--r-cpu); }
+[data-c="pci"] { --c: var(--r-pci); }
+[data-c="out"] { --c: var(--r-out); }
+[data-c="cache"] { --c: var(--r-cache); }
+.rn { font-weight: 600; color: var(--c); }
+.rn.tbd { font-style: italic; font-weight: 400; }
+
+/* ---------- roles ---------- */
+.assignbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; margin: 16px 0 0; }
+.assignbar .status { font-weight: 600; margin-right: auto; }
+.assignbar .status.done { color: var(--ok); }
+.roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.role { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 6px; padding: 16px 18px; min-width: 0; transition: opacity .2s, box-shadow .2s; }
+.role h3 { margin: 0 0 2px; }
+.role .tag { font-family: var(--mono); font-size: 12px; color: var(--c); margin: 0 0 10px; }
+.role .owner { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; font-size: 14px; color: var(--muted); }
+.role select { font: 600 15px var(--body); color: var(--fg); background: var(--bg); border: 1.5px solid var(--c); border-radius: 6px; padding: 4px 8px; }
+.role ul { margin: 0; padding-left: 18px; font-size: 15.5px; }
+.role li { margin-bottom: 4px; }
+.role .buddy { margin: 10px 0 0; font-size: 14px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
+@media (max-width: 760px) { .roles { grid-template-columns: minmax(0, 1fr); } }
+
+/* "who am I" focus: dim work that belongs to other roles */
+body[data-myrole="cpu"]   [data-role]:not([data-role~="cpu"]):not([data-role~="all"]),
+body[data-myrole="pci"]   [data-role]:not([data-role~="pci"]):not([data-role~="all"]),
+body[data-myrole="out"]   [data-role]:not([data-role~="out"]):not([data-role~="all"]),
+body[data-myrole="cache"] [data-role]:not([data-role~="cache"]):not([data-role~="all"]) { opacity: .35; }
+body[data-myrole="cpu"] .role[data-role="cpu"], body[data-myrole="pci"] .role[data-role="pci"],
+body[data-myrole="out"] .role[data-role="out"], body[data-myrole="cache"] .role[data-role="cache"] { box-shadow: 0 0 0 2px var(--c); }
+
+.pill { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; padding: 1px 7px; border-radius: 10px; vertical-align: 2px; white-space: nowrap; }
+.pill.ext { background: var(--accent-soft); color: var(--accent); }
+.pill.stretch { background: var(--warn-soft); color: var(--warn); }
+.pill .rn { color: inherit; }
+
+/* ---------- task board ---------- */
+.board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+@media (max-width: 1000px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.col { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 6px; padding: 12px 14px; min-width: 0; transition: opacity .2s; }
+.col h3 { margin: 0; font-size: 17px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.col h3 .pct { font-family: var(--mono); font-size: 13px; color: var(--c); font-variant-numeric: tabular-nums; }
+.col .sub { margin: 0; font-size: 13px; color: var(--muted); }
+.col .bar { height: 6px; margin: 8px 0 10px; }
+.col .bar span { background: var(--c); }
+.col .ph { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; }
+.task { display: flex; gap: 8px; align-items: flex-start; font-size: 14.5px; line-height: 1.4; padding: 3px 0; cursor: pointer; }
+.task input { margin-top: 3px; accent-color: var(--c); flex: none; }
+.task.done span { text-decoration: line-through; color: var(--muted); }
+.board-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.small { font-size: 14px; color: var(--muted); }
+textarea.copyout { width: 100%; min-height: 140px; font: 13px var(--mono); background: var(--code-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-top: 8px; }
+
+/* ---------- timeline ---------- */
+.timeline { list-style: none; padding: 0; margin: 16px 0; border-left: 2px solid var(--line); }
+.timeline li { position: relative; padding: 0 0 18px 22px; max-width: none; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: 7px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); }
+.timeline li.gate::before { background: var(--accent); }
+.timeline li.past { opacity: .55; }
+.timeline li.today::before { background: var(--warn); border-color: var(--warn); box-shadow: 0 0 0 4px var(--warn-soft); }
+.timeline .when { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+.timeline li.today .when::after { content: " ← today"; color: var(--warn); }
+.timeline .what { font-weight: 600; }
+.timeline p { margin: 2px 0 0; font-size: 15.5px; color: var(--muted); }
+
+/* ---------- interview ---------- */
+.qa-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 0 16px; margin: 8px 0; transition: box-shadow .2s; }
+details[open] { padding-bottom: 12px; }
+details.picked { box-shadow: 0 0 0 2px var(--warn); }
+summary { cursor: pointer; padding: 11px 0; font-weight: 600; display: flex; gap: 10px; align-items: baseline; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+details[open] summary::before { transform: rotate(90deg); }
+summary .conf { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+details p { margin: 4px 0 8px; font-size: 15.5px; }
+.confbox { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+.confbox label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.confbox input { accent-color: var(--accent); }
+
+/* ---------- checklist ---------- */
+.check { list-style: none; padding: 0; }
+.check li { margin-bottom: 6px; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { margin-top: 5px; accent-color: var(--ok); }
+.check input:checked + span { color: var(--muted); text-decoration: line-through; }
+footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="toolbar-in">
+    <span class="lbl">I am</span>
+    <div class="who" id="who" role="group" aria-label="Choose your name to highlight your work">
+      <button type="button" data-me="">Everyone</button>
+      <button type="button" data-me="fionn">Fionn</button>
+      <button type="button" data-me="joeseph">Joeseph</button>
+      <button type="button" data-me="halim">Halim</button>
+      <button type="button" data-me="andrew">Andrew</button>
+    </div>
+    <span class="myrole" id="myRole" role="status"></span>
+    <button type="button" class="btn" id="theme" aria-label="Switch light or dark theme">Theme</button>
+    <span class="countdown" id="countdown"></span>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc" aria-label="Sections">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#brief">The brief</a></li>
+    <li><a href="#starter">Starter code</a></li>
+    <li><a href="#design">Program design</a></li>
+    <li><a href="#roles">Team roles</a></li>
+    <li><a href="#board">Task board</a></li>
+    <li><a href="#extensions">Extensions</a></li>
+    <li><a href="#timeline">Timeline</a></li>
+    <li><a href="#git">GitHub workflow</a></li>
+    <li><a href="#testing">Testing</a></li>
+    <li><a href="#interview">Interview prep</a></li>
+    <li><a href="#language">Java, C or C#?</a></li>
+    <li><a href="#submit">Submission checklist</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <p class="eyebrow">CS4421 Computer Organisation · Fionn · Joeseph · Halim · Andrew</p>
+  <h1>Hardware Inspector Team Plan</h1>
+  <p class="lede">How we build a Java program that reads <code>/proc</code> and <code>/sys</code>, reports the CPU, memory, PCI and USB devices in plain text, adds two extensions that tie back to the lectures, and leaves all four of us able to explain every line.</p>
+  <dl class="facts">
+    <div><dt>Plan written</dt><dd>Tue 20 Oct<small>9 working days to submit</small></dd></div>
+    <div><dt>Code due</dt><dd>Thu 29 Oct<small>−5% per day late</small></dd></div>
+    <div><dt>Interview</dt><dd>Fri 30 Oct<small>~15 min, whole team</small></dd></div>
+    <div><dt>Weight</dt><dd>13.3%<small>of Block 1</small></dd></div>
+  </dl>
+  <p class="small">The work is split into four roles. Who takes which role is still to be decided: assign them in <a href="#roles">§4</a> and every name on the page updates. Pick your own name in the bar at the top to highlight your work. Ticks and assignments are saved in this browser only.</p>
+</header>
+
+<!-- ============================================================ -->
+<h2 id="brief"><span class="sec">§1</span>What the brief actually rewards</h2>
+<p>Every mark comes from the interview. The code has to work, but the grade depends on how well each of us explains it. Half the marks are for discussing functionality, design choices and course topics. Another 30 go to creativity, which mostly means the extension.</p>
+
+<div class="marks" role="list">
+  <div class="mrow" role="listitem"><span>Purpose: meets brief, subject knowledge</span><div class="bar"><span style="width:66.7%"></span></div><span class="v">20</span></div>
+  <div class="mrow" role="listitem"><span>Can discuss functionality</span><div class="bar"><span style="width:66.7%"></span></div><span class="v">20</span></div>
+  <div class="mrow" role="listitem"><span>Can discuss design choices</span><div class="bar"><span style="width:33.3%"></span></div><span class="v">10</span></div>
+  <div class="mrow" role="listitem"><span>Programming skill, links to lectures</span><div class="bar"><span style="width:33.3%"></span></div><span class="v">10</span></div>
+  <div class="mrow" role="listitem"><span>Communication</span><div class="bar"><span style="width:16.7%"></span></div><span class="v">5</span></div>
+  <div class="mrow" role="listitem"><span>Problem solving, critical thinking</span><div class="bar"><span style="width:16.7%"></span></div><span class="v">5</span></div>
+  <div class="mrow" role="listitem"><span>Creativity and innovation (extension)</span><div class="bar hot"><span style="width:100%"></span></div><span class="v">30</span></div>
+</div>
+
+<div class="note"><p><strong>What this means for the plan.</strong> Finish the core early, so most of the time goes into (a) one strong extension that we measure and explain properly, and (b) making sure everyone understands every part. A second, lighter extension is the "bit beyond". We will not add features nobody can explain.</p></div>
+
+<h3>Core requirements (all mandatory)</h3>
+<div class="tbl"><table>
+<thead><tr><th>#</th><th>Requirement</th><th>Data source</th><th>Owner</th><th>Done when</th></tr></thead>
+<tbody>
+<tr data-role="cpu"><td class="num">1</td><td>CPU: core count, model, load per core and average, from two readings ~1 s apart</td><td><code>/proc/cpuinfo</code>, <code>/proc/stat</code></td><td><span class="rn" data-for="cpu"></span></td><td>Prints e.g. <em>cpu3 37.2%</em> per core and the average; handles arm64 (no <code>model name</code>)</td></tr>
+<tr data-role="out"><td class="num">2</td><td>Memory: total, used, % used</td><td><code>/proc/meminfo</code></td><td><span class="rn" data-for="out"></span></td><td>Human units (GiB) plus a one-sentence summary</td></tr>
+<tr data-role="pci"><td class="num">3</td><td>PCI: bus, device, function, vendor ID, device ID, class, <strong>stored in a list</strong></td><td><code>/sys/bus/pci/devices/*</code></td><td><span class="rn" data-for="pci"></span></td><td><code>List&lt;PciDevice&gt;</code> built once and reused</td></tr>
+<tr data-role="out"><td class="num">4</td><td>USB: vendor ID, product ID, stored in a list; must say so if there are none</td><td><code>/sys/bus/usb/devices/*</code></td><td><span class="rn" data-for="out"></span></td><td>Runs on alderaan without crashing; prints "No USB devices found"</td></tr>
+<tr data-role="pci"><td class="num">5</td><td>Names from <code>pci.ids</code> / <code>usb.ids</code>; raw ID if not found</td><td><code>ids/</code> folder</td><td><span class="rn" data-for="pci"></span></td><td>Never prints <code>null</code> (the starter demo currently does)</td></tr>
+<tr data-role="pci"><td class="num">6</td><td>Sort PCI by vendor name and by bus/device/function; at least one summary</td><td>our own code</td><td><span class="rn" data-for="pci"></span></td><td>Two sorted tables plus counts per vendor and per class</td></tr>
+<tr data-role="out"><td class="num">7</td><td>Readable text output, headless</td><td>n/a</td><td><span class="rn" data-for="out"></span></td><td>No Swing/JavaFX; works over SSH on alderaan</td></tr>
+</tbody></table></div>
+
+<p><strong>Also required:</strong> a GitHub repo where everyone's commits are visible, a README covering how to build and run the program and which file each value comes from, the signed plagiarism declaration, and a <em>"Declaration of Generative AI and AI-assisted technologies"</em> at the end. Using AI (including this plan) means keeping every prompt and response for the full academic year.</p>
+
+<!-- ============================================================ -->
+<h2 id="starter"><span class="sec">§2</span>What the starter code gives us</h2>
+<p>About 400 lines of plain Java, all <code>static</code> methods, no libraries. It was compiled and <code>demo</code> was run on Fionn's laptop (Intel Core Ultra 7 258V, 8 cores, 31 GiB, 27 PCI and 6 USB devices) with OpenJDK 27. It works. Each class is short enough for everyone to read in one sitting, and the brief warns that we will be asked how they work.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>Class</th><th>What it does</th><th>Things we must understand or fix</th></tr></thead>
+<tbody>
+<tr data-role="all"><td><code>sysFile</code></td><td>Reads a file as text, lines or a number. Returns <code>""</code> / <code>-1</code> instead of throwing. Honours <code>-Dhw.root=</code> for testing against a copied folder.</td><td>This is why missing files never crash the program. <code>hw.root</code> is our best testing tool (see §9).</td></tr>
+<tr data-role="cpu"><td><code>cpuInfo</code></td><td>Counts <code>processor</code> lines, finds <code>model name</code>, sums tick columns from <code>/proc/stat</code>.</td><td>
+  <code>getCount()</code> counts <em>logical</em> CPUs, not physical cores; with hyper-threading they differ.<br>
+  Busy = user+nice+system+irq+softirq+steal. Idle = idle+iowait. Guest columns are skipped because they are already counted inside user.<br>
+  <code>getBusy(c)</code> and <code>getIdle(c)</code> each re-read the whole file, so for 8 cores one sample is 16 file reads and busy/idle come from slightly different moments. Our sampler reads the file <strong>once</strong> per sample (a design choice we can talk about).</td></tr>
+<tr data-role="out"><td><code>memInfo</code></td><td>Reads <code>MemTotal</code>, <code>MemAvailable</code>; used = total − available. Values in KiB.</td><td>Be ready to explain why we use <em>available</em> rather than <em>free</em>: page cache counts as reclaimable.</td></tr>
+<tr data-role="pci"><td><code>pciInfo</code></td><td>Lists folders like <code>0000:00:14.3</code> and parses domain:bus:device.function. Reads hex <code>vendor</code>, <code>device</code>, <code>class</code>.</td><td>The API is index-based (<code>getVendorId(i)</code>). The brief wants devices <em>stored</em>, so we build our own <code>PciDevice</code> objects from it.</td></tr>
+<tr data-role="out"><td><code>usbInfo</code></td><td>Lists device folders that have an <code>idVendor</code> file, so interfaces are skipped, sorted like <code>lsusb</code>.</td><td>Includes root hubs (vendor <code>1d6b</code> Linux Foundation). We should label them separately from devices that are actually plugged in.</td></tr>
+<tr data-role="pci"><td><code>idLookup</code></td><td>Parses the ID files into HashMaps: vendor → name, (vendor&lt;&lt;16 | device) → name, class → name.</td><td>Returns <code>null</code> for unknown IDs, so we must fall back to the hex. Throws <code>IOException</code> if <code>ids/</code> is missing, so run from the repo root or catch it. Subsystem lines (two tabs) are ignored.</td></tr>
+<tr data-role="all"><td><code>demo</code></td><td>Example calls only.</td><td>Its output shows the gaps: <code>Chicony Electronics Co., Ltd null</code>, nothing sorted, nothing measured.</td></tr>
+</tbody></table></div>
+
+<div class="note warn"><p><strong>Two findings from the test machine worth using in the interview.</strong> First, the 258V is a <em>hybrid</em> CPU. CPUs 0–3 are P-cores (48K L1d, 2.5 MB L2, 12 MB L3), and CPUs 4–7 are E-cores (32K L1d, 4 MB L2 shared by all four, and no L3 listed). <code>/sys/devices/cpu_core/cpus</code> and <code>/sys/devices/cpu_atom/cpus</code> say which is which. Second, there is no hyper-threading, so logical = physical = 8 here. That is not true on most desktops, so check it on each machine.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="design"><span class="sec">§3</span>Program design</h2>
+<p>We keep the starter classes as the "readers" and add a thin layer of plain classes on top: data objects, analysis and output. Use plain classes rather than records, generics only where Java collections need them, and no build tool, so the code reads the way we were taught.</p>
+
+<pre><code>hardware-inspector/
+├── README.md               build/run, data-source table, AI + plagiarism declarations   (<span class="rn" data-for="cache"></span>)
+├── run.sh                  javac + java in one step                                      (<span class="rn" data-for="out"></span>)
+├── ids/                    pci.ids, usb.ids (from starter)
+└── src/
+    ├── sysFile, cpuInfo, memInfo, pciInfo, usbInfo, idLookup   (starter, lightly fixed)
+    │
+    ├── HardwareInspector.java   main(): parses flags, runs each section, prints report   (<span class="rn" data-for="out"></span>)
+    ├── CpuReport.java           model, logical/physical cores, P/E split                 (<span class="rn" data-for="cpu"></span>)
+    ├── CpuSampler.java          reads /proc/stat once → long[][] snapshot                (<span class="rn" data-for="cpu"></span>)
+    ├── MemoryReport.java        total/used/available/swap, KiB → GiB helpers             (<span class="rn" data-for="out"></span>)
+    ├── PciDevice.java           one device + looked-up names; compareTo = BDF order      (<span class="rn" data-for="pci"></span>)
+    ├── UsbDevice.java           one device: bus/devnum, ids, names, isRootHub()          (<span class="rn" data-for="out"></span>)
+    ├── DeviceScanner.java       builds List&lt;PciDevice&gt; and List&lt;UsbDevice&gt;              (<span class="rn" data-for="pci"></span>)
+    ├── PciAnalysis.java         sortByVendor(), sortByAddress(), countByVendor/Class()   (<span class="rn" data-for="pci"></span>)
+    ├── TextTable.java           column-aligned tables + ASCII bars  [██████░░░░] 61%     (<span class="rn" data-for="out"></span>)
+    ├── CacheInfo.java           reads /sys/devices/system/cpu/cpuN/cache/index*          (<span class="rn" data-for="cache"></span>)
+    ├── CacheExplorer.java       EXTENSION 1: stride + pointer-chase benchmarks           (<span class="rn" data-for="cache"></span>)
+    ├── ParallelBench.java       EXTENSION 2: 1..N threads, speedup vs Amdahl             (<span class="rn" data-for="cpu"></span>)
+    └── ReportExporter.java      STRETCH: CSV + one self-contained HTML/SVG page          (<span class="rn" data-for="out"></span>)</code></pre>
+
+<h3>Command line</h3>
+<pre><code>./run.sh                       # full text report (core requirements)
+./run.sh --cache               # + memory hierarchy explorer
+./run.sh --threads             # + parallel speedup / Amdahl
+./run.sh --export out/         # + writes report.csv and report.html (text still printed)
+java -Dhw.root=samples/alderaan -cp out HardwareInspector   # replay another machine</code></pre>
+
+<h3>The pieces everyone should be able to write on a whiteboard</h3>
+<p><strong>CPU load from two readings.</strong> <code>/proc/stat</code> counters only go up, counting ticks (normally 100 per second, USER_HZ) since boot. The load over the last second is the share of new ticks that were busy:</p>
+<pre><code>long[][] a = CpuSampler.snapshot();      // a[core] = {busy, idle}
+Thread.sleep(1000);
+long[][] b = CpuSampler.snapshot();
+for (int c = 0; c &lt; cores; c++) {
+    long dBusy = b[c][0] - a[c][0];
+    long dIdle = b[c][1] - a[c][1];
+    long dTotal = dBusy + dIdle;
+    double pct = dTotal == 0 ? 0.0 : 100.0 * dBusy / dTotal;   // guard: no ticks → 0%
+}</code></pre>
+<p><strong>Sorting two ways.</strong> <code>PciDevice implements Comparable&lt;PciDevice&gt;</code> gives the natural bus→device→function order. A <code>Comparator</code> gives vendor-name order, using address as the tie-break. Sort copies of the list so the original order is kept.</p>
+<pre><code>List&lt;PciDevice&gt; byAddr = new ArrayList&lt;&gt;(devices);
+Collections.sort(byAddr);                                   // uses compareTo (bus, dev, fn)
+
+List&lt;PciDevice&gt; byVendor = new ArrayList&lt;&gt;(devices);
+byVendor.sort(Comparator.comparing(PciDevice::getVendorName, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(Comparator.naturalOrder()));</code></pre>
+<p><strong>Summary.</strong> A <code>TreeMap&lt;String,Integer&gt;</code> counting devices per vendor and per base class, e.g. <em>Bridge 6, Serial bus controller 8</em>. We also print a few derived sentences. The brief says this is the kind of output it wants.</p>
+
+<h3>Target output (example layout, using the test laptop's real numbers)</h3>
+<pre><code>══ PROCESSOR ════════════════════════════════════════════════
+Model     Intel(R) Core(TM) Ultra 7 258V
+Cores     8 logical / 8 physical (4 performance + 4 efficient), no hyper-threading
+Load      measured over 1.00 s
+  cpu0  P  [████████░░░░░░░░░░░░]  41.0%
+  cpu1  P  [██░░░░░░░░░░░░░░░░░░]  12.3%
+  ...
+  avg      [███░░░░░░░░░░░░░░░░░]  17.8%
+
+══ MEMORY ═══════════════════════════════════════════════════
+Total 30.9 GiB   Used 7.5 GiB   Available 23.4 GiB   (24.4% in use)
+
+══ PCI DEVICES (27) — by bus:device.function ═══════════════
+ BUS DEV FN  VENDOR:DEVICE  CLASS                     NAME
+  00  14  3  8086:a840      Network controller        Intel Corporation BE200 Series Wi-Fi 7
+  56  00  0  15b7:5044      Non-Volatile memory ctrl  Sandisk Corp WD PC SN7100S NVMe SSD
+...
+Summary: 25 Intel, 1 Realtek, 1 Sandisk · most common class: Serial bus controller (8)
+
+══ USB DEVICES (6: 4 root hubs, 2 attached) ═════════════════
+  Bus 003 Dev 002  04f2:b83c  Chicony Electronics Co., Ltd  [device 0xb83c not in usb.ids]
+
+In plain English: this machine has 8 cores and 30.9 GiB of RAM, of which 7.5 GiB is in use.</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="roles"><span class="sec">§4</span>Team roles</h2>
+<p>The work is split into four roles. Each role owns one core area and one piece of extension work, and is also the <em>buddy</em> for another role: it reviews every PR in that area and must be able to explain it. Ownership decides who writes the code. In the interview, any of us may be asked about any of it.</p>
+<p>Choose an owner for each role below. Picking someone who already holds a role swaps the two of you. Task-board ticks belong to the role, so they move with the work if you swap later.</p>
+
+<div class="assignbar">
+  <span class="status" id="assignStatus" role="status"></span>
+  <button type="button" class="btn" id="shuffleRoles">Shuffle randomly</button>
+  <button type="button" class="btn" id="clearRoles">Clear</button>
+  <button type="button" class="btn" id="copyRoles">Copy decision</button>
+</div>
+<textarea class="copyout" id="rolesOut" hidden readonly aria-label="Role decision text to copy"></textarea>
+
+<div class="roles">
+  <section class="role" data-c="cpu" data-role="cpu">
+    <h3>Processor &amp; parallelism</h3>
+    <p class="tag">core 1 · extension 2</p>
+    <p class="owner"><label for="own-cpu">Owner</label><select id="own-cpu" data-for-role="cpu"></select></p>
+    <ul>
+      <li><code>CpuSampler</code> (one-read snapshot), <code>CpuReport</code>: per-core and average load</li>
+      <li>Logical vs physical cores (unique <code>physical id</code>+<code>core id</code>); P/E split from <code>/sys/devices/cpu_core|cpu_atom/cpus</code> if present</li>
+      <li>arm64 fallback: <code>CPU implementer</code> / <code>CPU part</code> plus a small lookup (0x41 = Arm Ltd)</li>
+      <li><code>ParallelBench</code>: speedup vs Amdahl, live load bars while it runs</li>
+    </ul>
+    <p class="buddy">Buddy for: <span class="rn" data-for="cache"></span> (cache explorer). Both are about timing and the CPU.</p>
+  </section>
+  <section class="role" data-c="pci" data-role="pci">
+    <h3>PCI, names &amp; analysis</h3>
+    <p class="tag">core 3, 5, 6 · comparison stretch</p>
+    <p class="owner"><label for="own-pci">Owner</label><select id="own-pci" data-for-role="pci"></select></p>
+    <ul>
+      <li><code>PciDevice</code> with <code>compareTo</code>, <code>DeviceScanner</code> for PCI</li>
+      <li>Name lookup with raw-ID fallback, class names from the 24-bit class code</li>
+      <li><code>PciAnalysis</code>: both sorts, counts per vendor and per class</li>
+      <li>Stretch: VM vs real-machine comparison (§6)</li>
+    </ul>
+    <p class="buddy">Buddy for: <span class="rn" data-for="out"></span> (USB and output). Same lookup code, same tables.</p>
+  </section>
+  <section class="role" data-c="out" data-role="out">
+    <h3>Memory, USB, output &amp; integration</h3>
+    <p class="tag">core 2, 4, 7 · export stretch · sets up the repo</p>
+    <p class="owner"><label for="own-out">Owner</label><select id="own-out" data-for-role="out"></select></p>
+    <ul>
+      <li>Creates the GitHub repo and adds everyone</li>
+      <li><code>MemoryReport</code> (with swap), unit helpers (KiB → MiB/GiB)</li>
+      <li><code>UsbDevice</code>, root-hub labelling, "no USB" message</li>
+      <li><code>TextTable</code> + <code>HardwareInspector.main</code>: owns the look of the report and merges sections</li>
+      <li><code>ReportExporter</code>: CSV + HTML with inline SVG bars</li>
+    </ul>
+    <p class="buddy">Buddy for: <span class="rn" data-for="pci"></span> (PCI and analysis).</p>
+  </section>
+  <section class="role" data-c="cache" data-role="cache">
+    <h3>Caches, testing &amp; README</h3>
+    <p class="tag">extension 1 · QA lead</p>
+    <p class="owner"><label for="own-cache">Owner</label><select id="own-cache" data-for-role="cache"></select></p>
+    <ul>
+      <li><code>CacheInfo</code>: reads <code>index*/level,type,size,coherency_line_size,shared_cpu_list</code>; survives a missing folder</li>
+      <li><code>CacheExplorer</code>: stride test (line size) and pointer chase (L1/L2/L3 sizes)</li>
+      <li>Collects <code>hw.root</code> sample folders (alderaan, a VM, each laptop) and runs the test matrix</li>
+      <li>Owns README and both declarations</li>
+    </ul>
+    <p class="buddy">Buddy for: <span class="rn" data-for="cpu"></span> (CPU and parallelism).</p>
+  </section>
+</div>
+
+<div class="note"><p><strong>Choosing who does what.</strong> The cache explorer is the hardest part, so it suits whoever is most comfortable with timing and low-level detail. The output and integration role touches everyone's code, so it suits whoever is best at keeping things joined up. Whoever has the Linux laptop with the most interesting hardware is a good fit for one of the measurement roles.</p>
+<p><strong>Rebalancing rule.</strong> The PCI role has the most core work, and the cache role has the least, because its extension is the hardest. If anyone is blocked for more than half a day, say so in the group chat and the person who is ahead picks it up.</p>
+<p><strong>Making the decision stick.</strong> Assignments are saved only in the browser you make them in. Once the team agrees, either send everyone the copied decision (its <code>#roles=</code> code loads the same choice when added to the end of the page address), or set <code>DEFAULT_ASSIGN</code> near the top of this file's script and commit the file to the repo.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="board"><span class="sec">§5</span>Task board</h2>
+<p>Tick tasks off as they are merged into <code>main</code>. Ticks are saved in this browser only, so each person tracks their own and posts the summary in the group chat.</p>
+<div class="board" id="boardCols"></div>
+<div class="board-actions">
+  <button type="button" class="btn" id="copyStatus">Copy status for group chat</button>
+  <button type="button" class="btn" id="resetTasks">Clear all ticks</button>
+  <span class="small" id="boardMsg" role="status"></span>
+</div>
+<textarea class="copyout" id="copyOut" hidden readonly aria-label="Status text to copy"></textarea>
+
+<!-- ============================================================ -->
+<h2 id="extensions"><span class="sec">§6</span>Extensions</h2>
+<p>The brief needs at least one. We do one in depth, one lighter one that reuses core code, and a cheap presentation add-on. Anything marked stretch gets cut first if we fall behind.</p>
+
+<div data-role="cache cpu">
+<h3>Extension 1: Memory hierarchy explorer <span class="pill ext">primary · <span class="rn" data-for="cache"></span>, buddy <span class="rn" data-for="cpu"></span></span></h3>
+<p>This is the most Computer Organisation of the options: it measures caches from inside Java and then checks the measurements against what the OS reports.</p>
+<ol>
+  <li><strong>Cache line size: stride test.</strong> Allocate an <code>int[]</code> much larger than L3 (64 MiB). Touch every <em>s</em>-th element for s = 1, 2, 4 … 256, and time per access. Cost rises until the stride reaches one cache line (16 ints = 64 B), because from then on every access is a fresh line. After that it flattens. Expect the hardware prefetcher to blur this, and be ready to say so.</li>
+  <li><strong>Cache sizes: pointer chase.</strong> For working sets from 4 KiB to 256 MiB, build a random single cycle in an <code>int[]</code> (Sattolo's shuffle) and follow it. Each load depends on the previous one, so the prefetcher and out-of-order execution cannot hide latency. Plot ns per access against size and look for the steps at L1, L2 and L3.</li>
+  <li><strong>Compare.</strong> Print measured vs reported (<code>CacheInfo</code>) side by side. On the hybrid laptop, run it pinned to a P-core and to an E-core with <code>taskset -c 0</code> / <code>taskset -c 7</code>. The steps should move, because the E-cores have a different L1/L2 and no L3. This is a strong result to show in the interview.</li>
+</ol>
+<pre><code>// Sattolo: one big cycle, so the chase visits every slot
+int[] next = new int[n];
+for (int i = 0; i &lt; n; i++) next[i] = i;
+Random r = new Random(42);
+for (int i = n - 1; i &gt; 0; i--) { int j = r.nextInt(i); int t = next[i]; next[i] = next[j]; next[j] = t; }
+
+int p = 0;
+long t0 = System.nanoTime();
+for (long k = 0; k &lt; steps; k++) p = next[p];      // each load depends on the last
+double nsPerAccess = (System.nanoTime() - t0) / (double) steps;
+sink += p;                                         // use p, or the JIT may delete the loop</code></pre>
+<p><strong>Java pitfalls to plan for:</strong> JIT warm-up (run each size once untimed first), garbage collection (allocate before timing), and the JIT deleting loops whose result is never used. Repeat each point 5 times and keep the median. These pitfalls are good interview material in their own right.</p>
+</div>
+
+<div data-role="cpu cache">
+<h3>Extension 2: Load and parallelism <span class="pill ext">secondary · <span class="rn" data-for="cpu"></span>, buddy <span class="rn" data-for="cache"></span></span></h3>
+<ul>
+  <li>CPU-bound task: count primes up to N, split into equal ranges, one per thread. Each thread keeps its own counter, so there is no shared state or locking.</li>
+  <li>Run on 1, 2, 4, 8, 16 threads. Speedup S(n) = T(1) / T(n), timed with <code>System.nanoTime()</code>.</li>
+  <li>While it runs, a sampler thread prints per-core load bars every 0.5 s. This reuses <code>CpuSampler</code> from the core, and you can watch the cores fill up.</li>
+  <li>Amdahl: S(n) = 1 / ((1 − p) + p/n). Estimate the serial fraction from our measurements with the Karp–Flatt metric e = (1/S − 1/n) / (1 − 1/n), then print measured vs predicted.</li>
+  <li>Discussion points: the speedup flattens past 8 threads (8 cores, no SMT). P- and E-cores run at different speeds, so equal-sized chunks finish unevenly. Splitting into many small chunks fixes that, which shows load balancing. On alderaan, VM steal time shows up in <code>/proc/stat</code>.</li>
+</ul>
+</div>
+
+<div data-role="out">
+<h3>Presentation export <span class="pill stretch">stretch · <span class="rn" data-for="out"></span></span></h3>
+<p>The <code>--export</code> option writes <code>report.csv</code> (PCI/USB tables, benchmark results) and one <code>report.html</code> with inline SVG bar charts for per-core load and the cache latency curve. It is all built with <code>StringBuilder</code>: no libraries, nothing to explain beyond string formatting. The text report still works on its own.</p>
+</div>
+
+<div data-role="pci">
+<h3>Your own idea: why a VM sees what it sees <span class="pill stretch">stretch · <span class="rn" data-for="pci"></span></span></h3>
+<p>Capture <code>hw.root</code> samples from alderaan and from a laptop. Add <code>--compare</code>, which prints the PCI devices only in A, only in B, and in both. Expect virtio devices (vendor <code>1af4</code>, Red Hat) and an emulated chipset on the VM, and no USB. Explain paravirtualisation in two sentences. Cheap to build, and it directly answers one of the brief's suggested ideas.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="timeline"><span class="sec">§7</span>Timeline</h2>
+<ol class="timeline" id="timelineList">
+  <li data-from="2026-10-20" data-to="2026-10-21" data-role="all"><span class="when">Tue 20 – Wed 21</span> · <span class="what">Decide roles, set up and read</span>
+    <p>Agree who takes each role (§4). <span class="rn" data-for="out"></span> creates the GitHub repo with the starter code and adds everyone. Everyone builds and runs <code>demo</code> on their own machine <em>and</em> on alderaan. Everyone reads all six starter classes and <code>cat</code>s every file in the data table. Check <code>uname -m</code> and <code>java -version</code> on alderaan: if it is arm64 or an old Java, that changes things. Agree on the class names in §3. 30-minute kickoff call.</p></li>
+  <li data-from="2026-10-22" data-to="2026-10-24" data-role="all"><span class="when">Thu 22 – Sat 24</span> · <span class="what">Core requirements on branches</span>
+    <p><span class="rn" data-for="cpu"></span>: CPU · <span class="rn" data-for="pci"></span>: PCI + analysis · <span class="rn" data-for="out"></span>: memory, USB, TextTable, main · <span class="rn" data-for="cache"></span>: CacheInfo, sample folders, start the cache explorer prototype. Small PRs, each reviewed by the buddy.</p></li>
+  <li class="gate" data-from="2026-10-24" data-to="2026-10-24" data-role="all"><span class="when">Sat 24 evening</span> · <span class="what">Gate 1: core complete</span>
+    <p>The full text report runs on all laptops and on alderaan, and meets requirements 1–7. If it doesn't, everyone works on the core on Sunday before touching extensions.</p></li>
+  <li data-from="2026-10-25" data-to="2026-10-26" data-role="all"><span class="when">Sun 25 – Mon 26</span> · <span class="what">Extensions</span>
+    <p><span class="rn" data-for="cache"></span> + <span class="rn" data-for="cpu"></span>: cache explorer and parallel bench, collecting real numbers on at least two machines. <span class="rn" data-for="out"></span>: export. <span class="rn" data-for="pci"></span>: comparison mode, then help wherever is behind. <span class="rn" data-for="cache"></span> starts the README data-source table.</p></li>
+  <li class="gate" data-from="2026-10-27" data-to="2026-10-27" data-role="all"><span class="when">Tue 27 evening</span> · <span class="what">Gate 2: feature freeze</span>
+    <p>No new features after this. Bug fixes, comments and README only.</p></li>
+  <li data-from="2026-10-28" data-to="2026-10-28" data-role="all"><span class="when">Wed 28</span> · <span class="what">Test, document, mock interview 1</span>
+    <p><span class="rn" data-for="cache"></span> runs the full test matrix (§9). Finish the README, AI declaration and plagiarism declaration. One-hour mock interview: each person answers questions about someone <em>else's</em> code.</p></li>
+  <li class="gate" data-from="2026-10-29" data-to="2026-10-29" data-role="all"><span class="when">Thu 29 (by midday)</span> · <span class="what">Submit</span>
+    <p>Tag <code>v1.0</code>, clone fresh and build from the README instructions to prove they work, then submit. Mock interview 2 in the evening, focused on the weak spots from round 1.</p></li>
+  <li data-from="2026-10-30" data-to="2026-10-30" data-role="all"><span class="when">Fri 30</span> · <span class="what">Interview</span>
+    <p>Bring a laptop with the program built and the extension results ready to show. Agree beforehand who opens.</p></li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="git"><span class="sec">§8</span>GitHub workflow</h2>
+<ul>
+  <li>One repo, <code>main</code> always compiles. Each person works on <code>feature/&lt;area&gt;</code> branches and merges through pull requests.</li>
+  <li>Every PR is reviewed and approved by the area's buddy before merge (<span class="rn" data-for="cpu"></span> ↔ <span class="rn" data-for="cache"></span>, <span class="rn" data-for="pci"></span> ↔ <span class="rn" data-for="out"></span>). The review is where the second person learns the code, so ask questions in the PR comments.</li>
+  <li>Commit from your own GitHub account, small and often, with messages that say what changed and why. The brief says contributions must be visible.</li>
+  <li>Naming: keep the starter classes' lowercase names unchanged (so they match the brief), and use normal Java <code>PascalCase</code> for our new classes. Same brace style as the starter.</li>
+  <li>Add a <code>.gitignore</code> for <code>out/</code> and IDE folders. Never commit compiled <code>.class</code> files.</li>
+  <li>Issues: one per task on the board in §5, assigned to its owner. That gives us a visible to-do list on GitHub too.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="testing"><span class="sec">§9</span>Testing</h2>
+<p>The starter's <code>-Dhw.root</code> lets us replay another machine's <code>/proc</code> and <code>/sys</code> files without access to it. <span class="rn" data-for="cache"></span> keeps a <code>samples/</code> folder with one snapshot per machine and a small <code>capture.sh</code> that copies the needed files.</p>
+<div class="tbl"><table>
+<thead><tr><th>Case</th><th>How</th><th>Expected</th></tr></thead>
+<tbody>
+<tr><td>Each team laptop</td><td>native run</td><td>Full report; numbers match <code>lscpu</code>, <code>free -h</code>, <code>lspci -nn</code>, <code>lsusb</code></td></tr>
+<tr><td>alderaan cloud server</td><td>SSH, no display</td><td>Runs headless; "No USB devices found" if none; virtio PCI names</td></tr>
+<tr><td>No cache folder</td><td><code>hw.root</code> sample with <code>cache/</code> deleted</td><td>"Cache information not available", no stack trace</td></tr>
+<tr><td>arm64 cpuinfo</td><td>sample with no <code>model name</code> line</td><td>Prints implementer/part instead of "unknown"</td></tr>
+<tr><td>Unknown IDs</td><td>sample with a made-up vendor <code>abcd</code></td><td>Shows <code>[unknown 0xabcd]</code>, never <code>null</code></td></tr>
+<tr><td>ids folder missing</td><td>run from another directory</td><td>Warning, then raw IDs only; program still finishes</td></tr>
+<tr><td>Busy machine</td><td>run while <code>ParallelBench</code> or <code>stress</code> runs</td><td>Load near 100% on loaded cores</td></tr>
+</tbody></table></div>
+<p>Team members on Windows or macOS: those systems don't have these files, and WSL2 has only partial ones. Use alderaan or a Linux VM for every test run.</p>
+
+<!-- ============================================================ -->
+<h2 id="interview"><span class="sec">§10</span>Interview preparation</h2>
+<p>Every person must be able to answer every question below without notes. Practise in the two mock interviews, and always answer about someone else's area. Tick your name under a question once you can answer it out loud without looking.</p>
+<div class="qa-tools">
+  <button type="button" class="btn" id="randomQ">Random question</button>
+  <button type="button" class="btn" id="toggleAll">Open all answers</button>
+  <span class="small" id="qaMsg" role="status"></span>
+</div>
+
+<div id="qaList">
+<details data-q="bdf"><summary>What do PCI bus, device and function numbers identify?</summary>
+<p>The device's address. Bus (8 bits, 0–255) is which PCI bus segment, device (5 bits, 0–31) is the slot on that bus, and function (3 bits, 0–7) is one of several independent functions inside one physical device. For example, <code>00:14.0</code> and <code>00:14.3</code> are two functions of one chip on Fionn's laptop. The leading <code>0000</code> is the PCI domain. In the sysfs folder name these are written in hex.</p></details>
+<details data-q="vendor"><summary>What is a vendor ID and why do we need a lookup file?</summary>
+<p>A 16-bit number assigned by PCI-SIG (or USB-IF for USB) to each manufacturer. The hardware only reports numbers, because that is cheap and fixed in silicon. Names live in community-maintained databases (<code>pci.ids</code>, <code>usb.ids</code>), so they can be updated without touching the hardware or the kernel. That is also why some new devices aren't in the file yet.</p></details>
+<details data-q="load"><summary>How did you calculate CPU load from two readings?</summary>
+<p><code>/proc/stat</code> gives cumulative ticks since boot per core, split by state. One reading only gives an average since boot. Two readings 1 s apart give the ticks spent in that second. Load = Δbusy / (Δbusy + Δidle). We count iowait as idle and steal as busy, and we can say why.</p></details>
+<details data-q="mem"><summary>Why is "used" memory total − available, not total − free?</summary>
+<p>Linux uses spare RAM as page cache. "Free" leaves out cache, which the kernel can drop at once if a program needs the memory, so total − free would make the machine look nearly full. MemAvailable is the kernel's estimate of what programs can really get.</p></details>
+<details data-q="class"><summary>What is a class code, and what does 0x060400 mean?</summary>
+<p>24 bits: base class (06 = Bridge), sub class (04 = PCI bridge), programming interface (00). <code>idLookup.className</code> looks up base+sub.</p></details>
+<details data-q="roothub"><summary>Why does lsusb show "Linux Foundation root hub"?</summary>
+<p>Each USB host controller (an xHCI PCI device) is shown to the USB stack as a virtual root hub. That keeps the device tree uniform, and Linux reports the hub with its own vendor ID <code>1d6b</code>.</p></details>
+<details data-q="cache"><summary>What did the cache explorer measure, and why use pointer chasing?</summary>
+<p>Latency per access against working-set size. Each address depends on the previous load, so the CPU cannot run ahead or prefetch. Latency jumps when the working set no longer fits a cache level. Have the actual numbers from our run ready, and the comparison with <code>/sys/.../cache</code>.</p></details>
+<details data-q="amdahl"><summary>Why doesn't the speedup reach n? What does Amdahl say?</summary>
+<p>Serial parts (thread start-up, combining results), unequal core speeds (P vs E), shared caches and memory bandwidth, the OS and other processes. Amdahl caps the speedup at 1/(1−p) however many cores there are. Quote our measured serial fraction.</p></details>
+<details data-q="design"><summary>Design choices we should be ready to defend</summary>
+<p>Why we wrapped the index-based starter API in objects. Why we snapshot <code>/proc/stat</code> in one read. <code>Comparable</code> vs <code>Comparator</code>. Why <code>TreeMap</code> (sorted keys) for summaries. Why no build tool or external libraries. How the program copes with missing files.</p></details>
+<details data-q="lectures"><summary>How does this relate to lectures?</summary>
+<p>Buses and I/O devices (PCI/USB enumeration), the memory hierarchy (caches, lines, locality), CPU performance (load, parallelism, Amdahl's law), number representation (hex IDs, bit fields in the class code and BDF address), and the OS as the interface to hardware (<code>/proc</code>, <code>/sys</code>).</p></details>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="language"><span class="sec">§11</span>Java, C or C#?</h2>
+<p><strong>Stay in Java for everything submitted.</strong> The brief says the team writes a Java program, the starter is Java, and alderaan is the reference machine. C# needs the .NET runtime, which alderaan probably doesn't have, and it gains us nothing.</p>
+<p>One optional idea for later, only if everything else is finished: a ~40-line C version of the pointer-chase loop (C syntax is close to Java for this). Running both shows what the JVM adds (bounds checks, JIT warm-up) against raw C. It is a good critical-thinking point, but strictly a bonus. Leave it out if nobody wants to explain it.</p>
+
+<!-- ============================================================ -->
+<h2 id="submit"><span class="sec">§12</span>Submission checklist</h2>
+<ul class="check" id="submitList">
+  <li><label><input type="checkbox" id="sub-roles"><span>Roles agreed and the decision shared with everyone</span></label></li>
+  <li><label><input type="checkbox" id="sub-core"><span>All 7 core requirements visible in one run of <code>./run.sh</code></span></label></li>
+  <li><label><input type="checkbox" id="sub-alderaan"><span>Runs on alderaan over SSH (copy the output into the README)</span></label></li>
+  <li><label><input type="checkbox" id="sub-ext"><span>At least one extension with real measured numbers and a short write-up of what they show</span></label></li>
+  <li><label><input type="checkbox" id="sub-readme"><span>README: build/run steps, flags, and a table of <em>value → file it comes from</em></span></label></li>
+  <li><label><input type="checkbox" id="sub-results"><span>README: extension results (tables or a link to the exported HTML)</span></label></li>
+  <li><label><input type="checkbox" id="sub-plag"><span>Plagiarism declaration signed by Fionn, Joeseph, Halim and Andrew, with IDs</span></label></li>
+  <li><label><input type="checkbox" id="sub-ai"><span>"Declaration of Generative AI and AI-assisted technologies": tool, purpose, and a note that prompts and responses are saved</span></label></li>
+  <li><label><input type="checkbox" id="sub-commits"><span>Every member has visible commits and PR reviews on GitHub</span></label></li>
+  <li><label><input type="checkbox" id="sub-clone"><span>Fresh clone builds following only the README</span></label></li>
+  <li><label><input type="checkbox" id="sub-tag"><span>Tagged release, submitted before Thu 29 Oct</span></label></li>
+  <li><label><input type="checkbox" id="sub-mock"><span>Two mock interviews done; every member can answer every question in §10</span></label></li>
+</ul>
+
+<footer>Plan drafted 20 Oct 2026 from the CS4421 project brief and the hw-starter code. This plan was produced with AI assistance (Claude), so record it in the team's AI declaration and keep that conversation.</footer>
+</main>
+</div>
+
+<script>
+(function () {
+  // Once the team has decided, put the names here (role → person id) and commit
+  // this file, so everyone opens the page with the same assignment. Example:
+  // var DEFAULT_ASSIGN = { cpu: "fionn", pci: "joeseph", out: "halim", cache: "andrew" };
+  var DEFAULT_ASSIGN = { cpu: "", pci: "", out: "", cache: "" };
+
+  var PEOPLE = [
+    { id: "fionn", name: "Fionn" },
+    { id: "joeseph", name: "Joeseph" },
+    { id: "halim", name: "Halim" },
+    { id: "andrew", name: "Andrew" }
+  ];
+  var ROLES = [
+    { id: "cpu",   title: "Processor & parallelism",           label: "CPU lead" },
+    { id: "pci",   title: "PCI, names & analysis",             label: "PCI lead" },
+    { id: "out",   title: "Memory, USB, output & integration", label: "Output lead" },
+    { id: "cache", title: "Caches, testing & README",          label: "Cache lead" }
+  ];
+
+  // Tasks per role, grouped by phase. "all" tasks are copied into every column.
+  var TASKS = [
+    { role: "all", ph: "Setup", t: "Build and run demo on own machine" },
+    { role: "all", ph: "Setup", t: "Build and run demo on alderaan" },
+    { role: "all", ph: "Setup", t: "Read all six starter classes" },
+    { role: "all", ph: "Setup", t: "cat every file in the brief's data table" },
+    { role: "out", ph: "Setup", t: "Create GitHub repo, add the team, push starter" },
+    { role: "cpu", ph: "Core", t: "CpuSampler: one read of /proc/stat per snapshot" },
+    { role: "cpu", ph: "Core", t: "Per-core and average load over 1 s" },
+    { role: "cpu", ph: "Core", t: "Logical vs physical core count" },
+    { role: "cpu", ph: "Core", t: "P-core / E-core split when sysfs has it" },
+    { role: "cpu", ph: "Core", t: "arm64 fallback: CPU implementer / part" },
+    { role: "cpu", ph: "Extension", t: "ParallelBench: primes on 1–16 threads" },
+    { role: "cpu", ph: "Extension", t: "Speedup vs Amdahl table + Karp–Flatt" },
+    { role: "cpu", ph: "Extension", t: "Live load bars while the bench runs" },
+    { role: "pci", ph: "Core", t: "PciDevice class with compareTo (bus, dev, fn)" },
+    { role: "pci", ph: "Core", t: "DeviceScanner builds List<PciDevice>" },
+    { role: "pci", ph: "Core", t: "Vendor/device names with raw-ID fallback" },
+    { role: "pci", ph: "Core", t: "Class names from the 24-bit class code" },
+    { role: "pci", ph: "Core", t: "Sort by address and by vendor name" },
+    { role: "pci", ph: "Core", t: "Counts per vendor and per class (TreeMap)" },
+    { role: "pci", ph: "Extension", t: "Stretch: --compare two hw.root samples" },
+    { role: "out", ph: "Core", t: "MemoryReport with GiB units and swap" },
+    { role: "out", ph: "Core", t: "UsbDevice list, root hubs labelled" },
+    { role: "out", ph: "Core", t: "\"No USB devices found\" path tested" },
+    { role: "out", ph: "Core", t: "TextTable: aligned columns + ASCII bars" },
+    { role: "out", ph: "Core", t: "HardwareInspector main + flags + run.sh" },
+    { role: "out", ph: "Core", t: "Plain-English summary sentence" },
+    { role: "out", ph: "Extension", t: "Stretch: CSV + HTML/SVG export" },
+    { role: "cache", ph: "Core", t: "CacheInfo reader, copes with missing folder" },
+    { role: "cache", ph: "Core", t: "capture.sh + samples/ for hw.root testing" },
+    { role: "cache", ph: "Extension", t: "Stride test → cache line size" },
+    { role: "cache", ph: "Extension", t: "Pointer chase → L1/L2/L3 sizes" },
+    { role: "cache", ph: "Extension", t: "Measured vs reported table; P-core vs E-core runs" },
+    { role: "cache", ph: "Wrap-up", t: "Run the full test matrix" },
+    { role: "cache", ph: "Wrap-up", t: "README + both declarations" },
+    { role: "all", ph: "Wrap-up", t: "Review every PR for my buddy's area" },
+    { role: "all", ph: "Wrap-up", t: "Mock interview 1" },
+    { role: "all", ph: "Wrap-up", t: "Mock interview 2" }
+  ];
+  var PHASES = ["Setup", "Core", "Extension", "Wrap-up"];
+  var KEY = "hwplan-v2";
+
+  var state = load();
+  function load() {
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === "object") return s; } catch (e) {}
+    return {};
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  state.tasks = state.tasks || {};
+  state.conf = state.conf || {};
+  state.submit = state.submit || {};
+  state.assign = state.assign || Object.assign({}, DEFAULT_ASSIGN);
+
+  // A link ending in #roles=fionn,joeseph,halim,andrew (cpu, pci, out, cache order; "-" for undecided) sets the roles.
+  (function () {
+    var m = /roles=([a-z,\-]+)/.exec(location.hash);
+    if (!m) return;
+    var ids = m[1].split(","), known = PEOPLE.map(function (p) { return p.id; });
+    ROLES.forEach(function (r, i) { var v = ids[i]; state.assign[r.id] = known.indexOf(v) >= 0 ? v : ""; });
+    save();
+  })();
+
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function person(id) { return PEOPLE.filter(function (p) { return p.id === id; })[0]; }
+  function role(id) { return ROLES.filter(function (r) { return r.id === id; })[0]; }
+  function ownerName(rid) { var p = person(state.assign[rid]); return p ? p.name : null; }
+  function roleOf(pid) { return ROLES.filter(function (r) { return state.assign[r.id] === pid; }).map(function (r) { return r.id; })[0] || ""; }
+  function tasksFor(rid) {
+    return TASKS.filter(function (t) { return t.role === rid || t.role === "all"; })
+                .map(function (t) { return { key: rid + ":" + slug(t.t), ph: t.ph, t: t.t }; });
+  }
+  function copyText(text, box, msgEl, okMsg) {
+    box.value = text; box.hidden = false;
+    function fallback() { box.focus(); box.select(); msgEl.textContent = "Select the text below and copy it."; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { msgEl.textContent = okMsg; }, fallback);
+    } else fallback();
+  }
+
+  // ---------- names everywhere ----------
+  function renderNames() {
+    document.querySelectorAll(".rn[data-for]").forEach(function (s) {
+      var rid = s.getAttribute("data-for"), n = ownerName(rid);
+      s.setAttribute("data-c", rid);
+      s.textContent = n || role(rid).label;
+      s.classList.toggle("tbd", !n);
+    });
+    var count = ROLES.filter(function (r) { return ownerName(r.id); }).length, st = document.getElementById("assignStatus");
+    st.textContent = count === 4 ? "All four roles assigned" : count + " of 4 roles assigned";
+    st.classList.toggle("done", count === 4);
+  }
+
+  // ---------- role selects ----------
+  var selects = document.querySelectorAll("select[data-for-role]");
+  selects.forEach(function (sel) {
+    sel.appendChild(el("option", { value: "" }, "Not decided"));
+    PEOPLE.forEach(function (p) { sel.appendChild(el("option", { value: p.id }, p.name)); });
+    sel.addEventListener("change", function () {
+      var rid = sel.getAttribute("data-for-role"), pid = sel.value, prev = state.assign[rid];
+      // If that person already has a role, swap: they take this one, the previous owner takes theirs.
+      if (pid) ROLES.forEach(function (r) { if (r.id !== rid && state.assign[r.id] === pid) state.assign[r.id] = prev || ""; });
+      state.assign[rid] = pid;
+      save(); refreshAll();
+    });
+  });
+  function renderSelects() { selects.forEach(function (sel) { sel.value = state.assign[sel.getAttribute("data-for-role")] || ""; }); }
+
+  var rolesMsg = document.getElementById("assignStatus"), rolesOut = document.getElementById("rolesOut");
+  document.getElementById("shuffleRoles").addEventListener("click", function () {
+    var ids = PEOPLE.map(function (p) { return p.id; });
+    for (var i = ids.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = ids[i]; ids[i] = ids[j]; ids[j] = t; }
+    ROLES.forEach(function (r, i) { state.assign[r.id] = ids[i]; });
+    save(); refreshAll();
+  });
+  document.getElementById("clearRoles").addEventListener("click", function () {
+    ROLES.forEach(function (r) { state.assign[r.id] = ""; });
+    save(); refreshAll();
+  });
+  document.getElementById("copyRoles").addEventListener("click", function () {
+    var lines = ["Hardware Inspector roles"];
+    ROLES.forEach(function (r) { lines.push("  " + r.title + ": " + (ownerName(r.id) || "not decided")); });
+    var code = ROLES.map(function (r) { return state.assign[r.id] || "-"; }).join(",");
+    lines.push("", "To load this in team-plan.html, add #roles=" + code + " to the end of the page address.");
+    copyText(lines.join("\n"), rolesOut, rolesMsg, "Copied. Paste it into the group chat.");
+  });
+
+  // ---------- "who am I" ----------
+  var whoBtns = document.querySelectorAll("#who button");
+  function setMe(id) {
+    state.me = id; save();
+    whoBtns.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-me") === id)); });
+    var rid = id ? roleOf(id) : "";
+    if (rid) document.body.setAttribute("data-myrole", rid); else document.body.removeAttribute("data-myrole");
+    var out = document.getElementById("myRole");
+    out.textContent = !id ? "" : rid ? "Role: " + role(rid).title : "No role yet";
+    renderConfCounts();
+  }
+  whoBtns.forEach(function (b) { b.addEventListener("click", function () { setMe(b.getAttribute("data-me")); }); });
+
+  // ---------- theme ----------
+  function applyTheme(t) {
+    if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+  }
+  applyTheme(state.theme);
+  document.getElementById("theme").addEventListener("click", function () {
+    var dark = state.theme ? state.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    state.theme = dark ? "light" : "dark"; applyTheme(state.theme); save();
+  });
+
+  // ---------- countdown ----------
+  var due = new Date(2026, 9, 29, 12, 0, 0);
+  function tick() {
+    var ms = due - new Date(), out = document.getElementById("countdown");
+    if (ms <= 0) { out.textContent = "Submission deadline passed"; return; }
+    var d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+    out.innerHTML = "Submit in <b>" + d + "d " + h + "h " + m + "m</b>";
+  }
+  tick(); setInterval(tick, 30000);
+
+  // ---------- timeline: mark past / today ----------
+  (function () {
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    document.querySelectorAll("#timelineList li").forEach(function (li) {
+      var from = new Date(li.dataset.from + "T00:00:00"), to = new Date(li.dataset.to + "T00:00:00");
+      if (to < now) li.classList.add("past");
+      else if (from <= now && now <= to) li.classList.add("today");
+    });
+  })();
+
+  // ---------- task board (one column per role; ticks stay with the role) ----------
+  var board = document.getElementById("boardCols");
+  function renderBoard() {
+    board.innerHTML = "";
+    ROLES.forEach(function (r) {
+      var list = tasksFor(r.id), done = list.filter(function (t) { return state.tasks[t.key]; }).length;
+      var pct = list.length ? Math.round(100 * done / list.length) : 0;
+      var n = ownerName(r.id);
+      var col = el("section", { "class": "col", "data-c": r.id, "data-role": r.id, "aria-label": r.title + " tasks" });
+      var h = el("h3"); h.appendChild(el("span", { "class": "rn" + (n ? "" : " tbd"), "data-c": r.id }, n || r.label));
+      h.appendChild(el("span", { "class": "pct" }, done + "/" + list.length));
+      col.appendChild(h);
+      col.appendChild(el("p", { "class": "sub" }, r.title));
+      var bar = el("div", { "class": "bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct) });
+      var fill = el("span"); fill.style.width = pct + "%"; bar.appendChild(fill); col.appendChild(bar);
+      PHASES.forEach(function (ph) {
+        var items = list.filter(function (t) { return t.ph === ph; });
+        if (!items.length) return;
+        col.appendChild(el("p", { "class": "ph" }, ph));
+        items.forEach(function (t) {
+          var id = "t-" + slug(t.key);
+          var lab = el("label", { "class": "task" + (state.tasks[t.key] ? " done" : ""), "for": id });
+          var cb = el("input", { type: "checkbox", id: id });
+          cb.checked = !!state.tasks[t.key];
+          cb.addEventListener("change", function () {
+            if (cb.checked) state.tasks[t.key] = true; else delete state.tasks[t.key];
+            save(); renderBoard();
+            var again = document.getElementById(id); if (again) again.focus();
+          });
+          lab.appendChild(cb); lab.appendChild(el("span", {}, t.t));
+          col.appendChild(lab);
+        });
+      });
+      board.appendChild(col);
+    });
+  }
+
+  var msg = document.getElementById("boardMsg"), out = document.getElementById("copyOut");
+  document.getElementById("copyStatus").addEventListener("click", function () {
+    var mine = state.me ? roleOf(state.me) : "";
+    var roles = mine ? ROLES.filter(function (r) { return r.id === mine; }) : ROLES;
+    var lines = ["Hardware Inspector status, " + new Date().toLocaleDateString()];
+    roles.forEach(function (r) {
+      var list = tasksFor(r.id), done = list.filter(function (t) { return state.tasks[t.key]; });
+      lines.push("", (ownerName(r.id) || r.label) + " (" + r.title + "): " + done.length + "/" + list.length + " done");
+      list.forEach(function (t) { lines.push((state.tasks[t.key] ? "  [x] " : "  [ ] ") + t.t); });
+    });
+    copyText(lines.join("\n"), out, msg, "Copied. Paste it into the group chat.");
+  });
+  var resetArmed = false, resetBtn = document.getElementById("resetTasks");
+  resetBtn.addEventListener("click", function () {
+    if (!resetArmed) { resetArmed = true; resetBtn.textContent = "Click again to clear"; msg.textContent = "This removes every tick on the board."; return; }
+    state.tasks = {}; save(); renderBoard();
+    resetArmed = false; resetBtn.textContent = "Clear all ticks"; msg.textContent = "Board cleared.";
+  });
+  resetBtn.addEventListener("blur", function () { if (resetArmed) { resetArmed = false; resetBtn.textContent = "Clear all ticks"; msg.textContent = ""; } });
+
+  // ---------- interview: per-person confidence ----------
+  var qs = document.querySelectorAll("#qaList details");
+  qs.forEach(function (d) {
+    var q = d.dataset.q, box = el("div", { "class": "confbox" });
+    box.appendChild(el("span", {}, "I can answer this:"));
+    PEOPLE.forEach(function (p) {
+      var id = "c-" + q + "-" + p.id, lab = el("label", { "for": id });
+      var cb = el("input", { type: "checkbox", id: id });
+      cb.checked = !!(state.conf[q] && state.conf[q][p.id]);
+      cb.addEventListener("change", function () {
+        state.conf[q] = state.conf[q] || {};
+        if (cb.checked) state.conf[q][p.id] = true; else delete state.conf[q][p.id];
+        save(); renderConfCounts();
+      });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(p.name));
+      box.appendChild(lab);
+    });
+    d.appendChild(box);
+    d.querySelector("summary").appendChild(el("span", { "class": "conf" }));
+  });
+  function renderConfCounts() {
+    var mine = 0;
+    qs.forEach(function (d) {
+      var c = state.conf[d.dataset.q] || {}, n = Object.keys(c).length;
+      d.querySelector(".conf").textContent = n + "/4 ready";
+      if (state.me && c[state.me]) mine++;
+    });
+    document.getElementById("qaMsg").textContent = state.me
+      ? person(state.me).name + " is ready for " + mine + " of " + qs.length + " questions."
+      : "";
+  }
+
+  document.getElementById("randomQ").addEventListener("click", function () {
+    // Prefer questions the selected person hasn't ticked yet.
+    var pool = Array.prototype.filter.call(qs, function (d) { return !(state.me && state.conf[d.dataset.q] && state.conf[d.dataset.q][state.me]); });
+    if (!pool.length) pool = Array.prototype.slice.call(qs);
+    var d = pool[Math.floor(Math.random() * pool.length)];
+    qs.forEach(function (x) { x.classList.remove("picked"); x.open = false; });
+    d.classList.add("picked");
+    d.scrollIntoView({ block: "center" });
+    d.querySelector("summary").focus();
+    document.getElementById("qaMsg").textContent = "Answer out loud first, then open it to check.";
+  });
+  var allOpen = false;
+  document.getElementById("toggleAll").addEventListener("click", function () {
+    allOpen = !allOpen;
+    qs.forEach(function (d) { d.open = allOpen; });
+    this.textContent = allOpen ? "Close all answers" : "Open all answers";
+  });
+
+  // ---------- submission checklist ----------
+  document.querySelectorAll("#submitList input").forEach(function (cb) {
+    cb.checked = !!state.submit[cb.id];
+    cb.addEventListener("change", function () {
+      if (cb.checked) state.submit[cb.id] = true; else delete state.submit[cb.id];
+      save();
+    });
+  });
+
+  // ---------- contents: highlight current section ----------
+  var links = document.querySelectorAll("nav.toc a");
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.toggle("on", a.getAttribute("href") === "#" + en.target.id); });
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll("h2[id]").forEach(function (h) { io.observe(h); });
+  }
+
+  function refreshAll() { renderNames(); renderSelects(); renderBoard(); setMe(state.me || ""); }
+  refreshAll();
+})();
+</script>
+</body>
+</html>
