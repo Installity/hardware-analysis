@@ -1,5 +1,0 @@
-classpath:/Users/andrew/.m2/repository/com/github/oshi/oshi-core/7.7.2/oshi-core-7.7.2.jar	532355:1792503723000
-classpath:/Users/andrew/.m2/repository/com/github/oshi/oshi-common/7.7.2/oshi-common-7.7.2.jar	1108843:1792503723000
-classpath:/Users/andrew/.m2/repository/net/java/dev/jna/jna-jpms/5.19.1/jna-jpms-5.19.1.jar	1951454:1781282937000
-classpath:/Users/andrew/.m2/repository/net/java/dev/jna/jna-platform-jpms/5.19.1/jna-platform-jpms-5.19.1.jar	1417103:1781282937000
-classpath:/Users/andrew/.m2/repository/org/slf4j/slf4j-api/2.0.20/slf4j-api-2.0.20.jar	70255:1790088655000

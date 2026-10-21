@@ -11,10 +11,17 @@ public class demo
 {
     public static void main(String[] args) throws Exception
     {
+        double totalMem = memInfo.getTotal() / (1024.0 * 1024);
+        double used = memInfo.getUsed() / (1024.0 * 1024);
+        double available = memInfo.getAvailable() / (1024.0 * 1024);
+
         System.out.println("cores:  " + cpuInfo.getCount());
         System.out.println("model:  " + cpuInfo.getModel());
         //System.out.println("core 0: busy=" + cpuInfo.getBusy(0) + " idle=" + cpuInfo.getIdle(0));
-        System.out.println("memory: total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
+        System.out.println("Memory Statistics:\nmemory (KiB): total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
+        System.out.printf("Total: %.2f GiB%n", totalMem);
+        System.out.printf("Used: %.2f GiB%n", used);
+        System.out.printf("Available: %.2f GiB%n", available);
 
         idLookup pci = idLookup.pci();
         System.out.println("PCI devices: " + pciInfo.getCount());
@@ -35,10 +42,6 @@ public class demo
                               usb.vendorName(vendor), usb.deviceName(vendor, product));
         }
 
-        // Put this in your demo/main method.
-        // Thread.sleep requires handling InterruptedException,
-        // or declaring: public static void main(String[] args)
-        //                   throws InterruptedException
 
         long[][] before = cpuInfo.readTicks();
         Thread.sleep(1000);
