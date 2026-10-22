@@ -1,4 +1,5 @@
-import java.nio.file.Path;
+import oshi.SystemInfo;
+import oshi.hardware.GlobalMemory;
 
 /**
  * Information about memory, read from /proc/meminfo. All sizes are in KiB
@@ -6,18 +7,20 @@ import java.nio.file.Path;
  */
 public class memInfo
 {
-    private static final Path MEMINFO = sysFile.path("/proc/meminfo");
+    //private static final Path MEMINFO = sysFile.path("/proc/meminfo");
+    private static final GlobalMemory MEMORY =
+        new SystemInfo().getHardware().getMemory();
 
     /** Total installed memory in KiB, or -1 if it cannot be read. */
     public static long getTotal()
     {
-        return field("MemTotal");
+        return MEMORY.getTotal() / 1024;
     }
 
     /** Memory that programs could use right now (free plus easily reclaimed), in KiB. */
     public static long getAvailable()
     {
-        return field("MemAvailable");
+        return MEMORY.getAvailable() / 1024;
     }
 
     /** Memory in use in KiB: total minus available. */
@@ -28,7 +31,8 @@ public class memInfo
         return (total < 0 || available < 0) ? -1 : total - available;
     }
 
-    /** The value in KiB of a named line of /proc/meminfo such as "SwapTotal", or -1. */
+    /** The value in KiB of a named line of /proc/meminfo such as "SwapTotal", or -1.
+     * DEPRECATED - will remove soonTM 
     public static long field(String name)
     {
         for (String line : sysFile.lines(MEMINFO)) {
@@ -43,4 +47,5 @@ public class memInfo
         }
         return -1;
     }
+        */
 }

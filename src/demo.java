@@ -11,10 +11,17 @@ public class demo
 {
     public static void main(String[] args) throws Exception
     {
+        double totalMem = memInfo.getTotal() / (1024.0 * 1024);
+        double used = memInfo.getUsed() / (1024.0 * 1024);
+        double available = memInfo.getAvailable() / (1024.0 * 1024);
+
         System.out.println("cores:  " + cpuInfo.getCount());
         System.out.println("model:  " + cpuInfo.getModel());
-        System.out.println("core 0: busy=" + cpuInfo.getBusy(0) + " idle=" + cpuInfo.getIdle(0));
-        System.out.println("memory: total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
+        //System.out.println("core 0: busy=" + cpuInfo.getBusy(0) + " idle=" + cpuInfo.getIdle(0));
+        System.out.println("Memory Statistics:\nmemory (KiB): total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
+        System.out.printf("Total: %.2f GiB%n", totalMem);
+        System.out.printf("Used: %.2f GiB%n", used);
+        System.out.printf("Available: %.2f GiB%n", available);
 
         idLookup pci = idLookup.pci();
         System.out.println("PCI devices: " + pciInfo.getCount());
@@ -34,5 +41,37 @@ public class demo
                               usbInfo.getDeviceNumber(i), vendor, product,
                               usb.vendorName(vendor), usb.deviceName(vendor, product));
         }
+
+
+        long[][] before = cpuInfo.readTicks();
+        Thread.sleep(1000);
+        long[][] after = cpuInfo.readTicks();
+
+        double totalUsage = 0.0;
+        int numCores = 0;
+
+        for (int core = 0; core < before.length; core++) {
+            long busy = cpuInfo.getBusy(after[core])
+                    - cpuInfo.getBusy(before[core]);
+
+            long idle = cpuInfo.getIdle(after[core])
+                    - cpuInfo.getIdle(before[core]);
+
+            long total = busy + idle;
+
+            if (busy < 0 || idle < 0 || total <= 0) {
+                System.out.printf("CPU %d: reading unavailable%n", core);
+                continue;
+            }
+
+            double usage = 100.0 * busy / total;
+            System.out.printf("CPU %d: %.1f%%%n", core, usage);
+            totalUsage = totalUsage + usage;
+            numCores++;
+        }
+        double avgUsage = totalUsage/numCores;
+        System.out.printf("Average CPU usage: %.1f%%%n", avgUsage);
+
+
     }
 }
